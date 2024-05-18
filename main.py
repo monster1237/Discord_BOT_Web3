@@ -8,7 +8,10 @@ import discord
 from discord.ext import commands
 from solders.pubkey import Pubkey
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from PIL import Image
 
 # 设置Discord机器人的意图
@@ -17,12 +20,13 @@ intents.messages = True
 intents.message_content = True
 
 # 创建机器人实例
-bot = commands.Bot(command_prefix='', intents=intents)
+bot = commands.Bot(command_prefix='!', intents=intents)
 
 # 从环境变量中获取API密钥
-coinmarketcap_key = os.environ['COINMARKETCAP_API']
-cryptocurrencyalerting_key = os.environ['CRYPTOCURRENCYALERTING_API']
-discordtoken = os.environ['DISCORD_BOT']
+coinmarketcap_key = os.environ.get('COINMARKETCAP_API')
+cryptocurrencyalerting_key = os.environ.get('CRYPTOCURRENCYALERTING_API')
+discordtoken = os.environ.get('DISCORD_BOT')
+chromedriver_path = os.getenv('CHROMEDRIVER_PATH', '/usr/local/bin/chromedriver')
 
 # 定义Solana和Ethereum地址的正则表达式模式
 solana_address_pattern = r'[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{32,44}'
@@ -68,9 +72,11 @@ def take_screenshot(url, file_name):
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--headless")
         chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--disable-gpu")
 
         # 创建WebDriver实例
-        driver = webdriver.Chrome(executable_path=os.getenv("CHROMEDRIVER_PATH"), options=chrome_options)
+        service = ChromeService(executable_path=chromedriver_path)
+        driver = webdriver.Chrome(service=service, options=chrome_options)
         driver.get(url)
         driver.save_screenshot(file_name)
         driver.quit()
