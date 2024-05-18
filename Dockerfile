@@ -29,6 +29,9 @@ RUN wget -q "https://github.com/mozilla/geckodriver/releases/download/v0.29.0/ge
     chmod +x geckodriver && \
     mv geckodriver /usr/local/bin/
 
+# 设置环境变量
+ENV CHROMEDRIVER_PATH=/usr/local/bin/chromedriver
+
 # 设置工作目录
 WORKDIR /usr/src/app
 
