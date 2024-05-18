@@ -5,7 +5,7 @@ import re
 import sqlite3
 import requests
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from solders.pubkey import Pubkey
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
@@ -13,6 +13,7 @@ from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from PIL import Image
+import traceback
 
 # 设置Discord机器人的意图
 intents = discord.Intents.default()
@@ -88,9 +89,10 @@ def take_screenshot(url, file_name):
         driver.quit()
         print(f"Screenshot saved to {file_name}")
     except Exception as e:
-        print(f"Error taking screenshot: {e}")
-        return False
-    return True
+        error_message = traceback.format_exc()
+        print(f"Error taking screenshot: {error_message}")
+        return error_message
+    return None
 
 # 当机器人准备好时触发
 @bot.event
@@ -113,10 +115,12 @@ async def on_message(message):
             log_address(message.author.id, message.author.name, solana_address)
             await message.channel.send(sol_url)  # 发送网址
             screenshot_file = f"{solana_address}.png"
-            if take_screenshot(sol_url, screenshot_file):
-                await message.channel.send(file=discord.File(screenshot_file))
+            error_message = take_screenshot(sol_url, screenshot_file)
+            if error_message:
+                sent_message = await message.channel.send(f"截图失败：\n```\n{error_message}\n```")
+                await sent_message.delete(delay=30)
             else:
-                await message.channel.send("截图失败，请稍后重试。")
+                await message.channel.send(file=discord.File(screenshot_file))
         return
 
     # 处理Ethereum地址
@@ -127,10 +131,12 @@ async def on_message(message):
         log_address(message.author.id, message.author.name, eth_address)
         await message.channel.send(eth_url)  # 发送网址
         screenshot_file = f"{eth_address}.png"
-        if take_screenshot(eth_url, screenshot_file):
-            await message.channel.send(file=discord.File(screenshot_file))
+        error_message = take_screenshot(eth_url, screenshot_file)
+        if error_message:
+            sent_message = await message.channel.send(f"截图失败：\n```\n{error_message}\n```")
+            await sent_message.delete(delay=30)
         else:
-            await message.channel.send("截图失败，请稍后重试。")
+            await message.channel.send(file=discord.File(screenshot_file))
         return
 
     if '查询' in message.content:
