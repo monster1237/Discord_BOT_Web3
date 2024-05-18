@@ -35,4 +35,4 @@ RUN npm install
 EXPOSE 8080
 
 # 运行应用
-CMD ["node", "server.js"]
+CMD ["node", "app.js"]
