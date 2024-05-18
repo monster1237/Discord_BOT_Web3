@@ -7,9 +7,7 @@ import discord
 from discord.ext import commands
 from solders.pubkey import Pubkey
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.options import Options as ChromeOptions
 from PIL import Image
 
 # 设置Discord机器人的意图
@@ -64,12 +62,14 @@ def log_address(user_id, username, address):
 # 截图功能
 def take_screenshot(url, file_name):
     try:
-        chrome_options = Options()
-        chrome_options.add_argument("--headless")
+        # 设置Chrome的无头模式选项
+        chrome_options = ChromeOptions()
         chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--headless")
         chrome_options.add_argument("--disable-dev-shm-usage")
 
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+        # 创建WebDriver实例
+        driver = webdriver.Chrome(options=chrome_options)
         driver.get(url)
         driver.save_screenshot(file_name)
         driver.quit()
