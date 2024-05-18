@@ -1,0 +1,5 @@
+discord.py
+selenium
+requests
+pillow
+solders
