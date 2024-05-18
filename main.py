@@ -7,7 +7,7 @@ import discord
 from discord.ext import commands
 from solders.pubkey import Pubkey
 from selenium import webdriver
-from selenium.webdriver.firefox.options import Options as FirefoxOptions
+from selenium.webdriver.chrome.options import Options as ChromeOptions
 from PIL import Image
 
 # 设置Discord机器人的意图
@@ -62,14 +62,14 @@ def log_address(user_id, username, address):
 # 截图功能
 def take_screenshot(url, file_name):
     try:
-        # 设置Firefox的无头模式选项
-        firefox_options = FirefoxOptions()
-        firefox_options.add_argument("--headless")  # 无界面模式
-        firefox_options.add_argument("--no-sandbox")
-        firefox_options.add_argument("--disable-dev-shm-usage")
+        # 设置Chrome的无头模式选项
+        chrome_options = ChromeOptions()
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--disable-dev-shm-usage")
 
         # 创建WebDriver实例
-        driver = webdriver.Firefox(executable_path=os.getenv("GECKODRIVER_PATH"), options=firefox_options)
+        driver = webdriver.Chrome(executable_path=os.getenv("CHROMEDRIVER_PATH"), options=chrome_options)
         driver.get(url)
         driver.save_screenshot(file_name)
         driver.quit()
