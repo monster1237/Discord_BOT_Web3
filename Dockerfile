@@ -34,4 +34,4 @@ RUN npm install
 # 暴露端口
 EXPOSE 8080
 
-CMD ["python", "main.py"]
+CMD ["node", "main.py"]
