@@ -16,8 +16,23 @@ RUN apt-get install -yqq unzip
 RUN wget -O /tmp/chromedriver.zip http://chromedriver.storage.googleapis.com/`curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE`/chromedriver_linux64.zip
 RUN unzip /tmp/chromedriver.zip chromedriver -d /usr/local/bin/
 
-#安装GeckoDriver
+# 安装GeckoDriver
 RUN wget -q "https://github.com/mozilla/geckodriver/releases/download/v0.29.0/geckodriver-v0.29.0-linux64.tar.gz" \
     && tar -xzf geckodriver-v0.29.0-linux64.tar.gz \
     && chmod +x geckodriver \
     && mv geckodriver /usr/local/bin/
+
+# 设置工作目录
+WORKDIR /usr/src/app
+
+# 复制项目文件
+COPY . .
+
+# 安装项目依赖
+RUN npm install
+
+# 暴露端口
+EXPOSE 8080
+
+# 运行应用
+CMD ["node", "main.py"]
