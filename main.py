@@ -74,12 +74,19 @@ def take_screenshot(url, file_name):
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--disable-gpu")
 
+        print(f"Using ChromeDriver path: {chromedriver_path}")
+        print(f"URL to capture: {url}")
+
         # 创建WebDriver实例
         service = ChromeService(executable_path=chromedriver_path)
         driver = webdriver.Chrome(service=service, options=chrome_options)
         driver.get(url)
+
+        print(f"Page title: {driver.title}")
+        
         driver.save_screenshot(file_name)
         driver.quit()
+        print(f"Screenshot saved to {file_name}")
     except Exception as e:
         print(f"Error taking screenshot: {e}")
         return False
@@ -108,6 +115,8 @@ async def on_message(message):
             screenshot_file = f"{solana_address}.png"
             if take_screenshot(sol_url, screenshot_file):
                 await message.channel.send(file=discord.File(screenshot_file))
+            else:
+                await message.channel.send("截图失败，请稍后重试。")
         return
 
     # 处理Ethereum地址
@@ -120,6 +129,8 @@ async def on_message(message):
         screenshot_file = f"{eth_address}.png"
         if take_screenshot(eth_url, screenshot_file):
             await message.channel.send(file=discord.File(screenshot_file))
+        else:
+            await message.channel.send("截图失败，请稍后重试。")
         return
 
     if '查询' in message.content:
