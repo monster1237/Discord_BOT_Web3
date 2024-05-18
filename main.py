@@ -19,9 +19,9 @@ intents.message_content = True
 bot = commands.Bot(command_prefix='', intents=intents)
 
 # 从环境变量中获取API密钥
-coinmarketcap_key = os.environ['COINMARKETCAP_API']
-cryptocurrencyalerting_key = os.environ['CRYPTOCURRENCYALERTING_API']
-discordtoken = os.environ['DISCORD_BOT']
+coinmarketcap_key = os.getenv('COINMARKETCAP_API')
+cryptocurrencyalerting_key = os.getenv('CRYPTOCURRENCYALERTING_API')
+discordtoken = os.getenv('DISCORD_BOT')
 
 # 定义Solana和Ethereum地址的正则表达式模式
 solana_address_pattern = r'[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{32,44}'
@@ -64,12 +64,13 @@ def take_screenshot(url, file_name):
     try:
         # 设置Chrome的无头模式选项
         chrome_options = ChromeOptions()
+        chrome_options.binary_location = os.getenv("GOOGLE_CHROME_BIN")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--headless")
         chrome_options.add_argument("--disable-dev-shm-usage")
 
         # 创建WebDriver实例
-        driver = webdriver.Chrome(options=chrome_options)
+        driver = webdriver.Chrome(executable_path=os.getenv("CHROMEDRIVER_PATH"), options=chrome_options)
         driver.get(url)
         driver.save_screenshot(file_name)
         driver.quit()
@@ -87,35 +88,35 @@ async def on_ready():
 # 监听消息事件
 @bot.event
 async def on_message(message):
+    # 确保处理命令
+    await bot.process_commands(message)
+
     if message.author == bot.user:
         return
 
-    match = re.search(solana_address_pattern, message.content)
-    if match:
-        solana_address = match.group()
+    # 处理Solana地址
+    match_solana = re.search(solana_address_pattern, message.content)
+    if match_solana:
+        solana_address = match_solana.group()
         if validate_solana_address(solana_address):
             sol_url = f"https://gmgn.ai/sol/token/{solana_address}?embled=1"
             log_address(message.author.id, message.author.name, solana_address)
-
+            await message.channel.send(sol_url)  # 发送网址
             screenshot_file = f"{solana_address}.png"
             if take_screenshot(sol_url, screenshot_file):
-                await message.channel.send(f"Solana地址: {solana_address}\n链接: {sol_url}")
                 await message.channel.send(file=discord.File(screenshot_file))
-            else:
-                await message.channel.send(f"Solana地址: {solana_address}\n链接: {sol_url}")
-            return
+        return
 
-    if re.search(eth_address_pattern, message.content):
-        eth_address = re.search(eth_address_pattern, message.content).group()
+    # 处理Ethereum地址
+    match_eth = re.search(eth_address_pattern, message.content)
+    if match_eth:
+        eth_address = match_eth.group()
         eth_url = f"https://gmgn.ai/eth/token/{eth_address}?embled=1"
         log_address(message.author.id, message.author.name, eth_address)
-
+        await message.channel.send(eth_url)  # 发送网址
         screenshot_file = f"{eth_address}.png"
         if take_screenshot(eth_url, screenshot_file):
-            await message.channel.send(f"Ethereum地址: {eth_address}\n链接: {eth_url}")
             await message.channel.send(file=discord.File(screenshot_file))
-        else:
-            await message.channel.send(f"Ethereum地址: {eth_address}\n链接: {eth_url}")
         return
 
     if '查询' in message.content:
@@ -161,6 +162,12 @@ async def on_message(message):
             sent_message = await message.channel.send(error_message)
             print(f"Failed to fetch token data: {e}")
             await sent_message.delete(delay=60)
+
+# 添加新的命令处理器
+@bot.command()
+async def 新功能(ctx, *, query: str):
+    # 这里添加处理新功能的代码
+    pass
 
 # 运行机器人
 bot.run(discordtoken)
