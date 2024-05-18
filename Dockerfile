@@ -21,18 +21,18 @@ RUN apt-get update && apt-get install -y \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
-# 添加 Chrome 的源并安装特定版本的 Chrome
-RUN apt-get update && apt-get install -y curl gnupg2 && \
-    curl -sS https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - && \
+# 添加 Google Chrome 的源，并安装 Google Chrome
+RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - && \
     sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google.list' && \
-    apt-get update && apt-get install -y google-chrome-stable=113.0.5672.63
+    apt-get update && \
+    apt-get install -y google-chrome-stable
     
-# 获取最新的 ChromeDriver 版本号，并下载对应的 ChromeDriver
-RUN CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+\.\d+' | cut -d '.' -f 1) && \
-    CHROMEDRIVER_VERSION=$(curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION) && \
-    wget -O /tmp/chromedriver.zip http://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip && \
-    unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
-    rm /tmp/chromedriver.zip
+# 下载特定版本的 ChromeDriver
+ARG CHROMEDRIVER_VERSION=125.0.6422.60
+RUN wget -O chromedriver_linux64.zip https://storage.googleapis.com/chrome-for-testing-public/${CHROMEDRIVER_VERSION}/linux64/chromedriver-linux64.zip && \
+    unzip chromedriver_linux64.zip && \
+    mv chromedriver /usr/local/bin/ && \
+    rm chromedriver_linux64.zip
 
 # 复制项目文件
 COPY . .
