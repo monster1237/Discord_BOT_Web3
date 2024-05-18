@@ -1,47 +1,50 @@
-# 使用官方Python作为基础镜像
-FROM python:3.8-slim
-
-# 更新软件包列表并安装必要软件
-RUN apt-get update && \
-    apt-get install -y \
-    wget \
-    curl \
-    gnupg \
-    unzip
-
-# 添加Chrome源
-RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
-RUN sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
-
-# 更新软件包列表并安装必要软件
-RUN apt-get update && \
-    apt-get install -y \
-    google-chrome-stable
-
-# 安装Chromedriver
-RUN LATEST_VERSION=$(curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE) && \
-    wget -O /tmp/chromedriver.zip "http://chromedriver.storage.googleapis.com/${LATEST_VERSION}/chromedriver_linux64.zip" && \
-    unzip /tmp/chromedriver.zip chromedriver -d /usr/local/bin/
-
-# 安装GeckoDriver
-RUN wget -q "https://github.com/mozilla/geckodriver/releases/download/v0.29.0/geckodriver-v0.29.0-linux64.tar.gz" && \
-    tar -xzf geckodriver-v0.29.0-linux64.tar.gz && \
-    chmod +x geckodriver && \
-    mv geckodriver /usr/local/bin/
-
-# 设置环境变量
-ENV CHROMEDRIVER_PATH=/usr/local/bin/chromedriver
+# 基础镜像
+FROM python:3.8-slim-buster
 
 # 设置工作目录
 WORKDIR /usr/src/app
 
+# 安装必要的软件包
+RUN apt-get update && apt-get install -y \
+    wget \
+    curl \
+    unzip \
+    gnupg \
+    libnss3 \
+    libgconf-2-4 \
+    libxss1 \
+    libappindicator3-1 \
+    libindicator7 \
+    fonts-liberation \
+    libasound2 \
+    xdg-utils \
+    --no-install-recommends && \
+    rm -rf /var/lib/apt/lists/*
+
+# 添加 Google Chrome 的源，并安装 Google Chrome
+RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - && \
+    sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google.list' && \
+    apt-get update && \
+    apt-get install -y google-chrome-stable
+
+# 获取最新的 ChromeDriver 版本号，并下载对应的 ChromeDriver
+RUN CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+\.\d+' | cut -d '.' -f 1) && \
+    CHROMEDRIVER_VERSION=$(curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION) && \
+    wget -O /tmp/chromedriver.zip http://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip && \
+    unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
+    rm /tmp/chromedriver.zip
+
 # 复制项目文件
 COPY . .
 
-# 安装项目依赖
-RUN pip install -r requirements.txt
+# 安装 Python 依赖
+RUN pip install --no-cache-dir -r requirements.txt
 
-# 暴露端口
-EXPOSE 8080
+# 暴露端口（如果需要）
+EXPOSE 8000
 
+# 设置环境变量
+ENV CHROMEDRIVER_PATH=/usr/local/bin/chromedriver
+
+# 运行应用
 CMD ["python", "main.py"]
