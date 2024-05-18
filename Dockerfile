@@ -34,5 +34,4 @@ RUN npm install
 # 暴露端口
 EXPOSE 8080
 
-# 运行应用
-CMD ["node", "app.js"]
+CMD ["python", "main.py"]
