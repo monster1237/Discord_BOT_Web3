@@ -7,7 +7,7 @@ import discord
 from discord.ext import commands
 from solders.pubkey import Pubkey
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from PIL import Image
 
 # 设置Discord机器人的意图
@@ -62,15 +62,12 @@ def log_address(user_id, username, address):
 # 截图功能
 def take_screenshot(url, file_name):
     try:
-        # 设置Chrome的无头模式选项
-        chrome_options = ChromeOptions()
-        chrome_options.binary_location = os.getenv("GOOGLE_CHROME_BIN")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--headless")
-        chrome_options.add_argument("--disable-dev-shm-usage")
+        # 设置Firefox的无头模式选项
+        firefox_options = FirefoxOptions()
+        firefox_options.add_argument("--headless")  # 无界面模式
 
         # 创建WebDriver实例
-        driver = webdriver.Chrome(executable_path=os.getenv("CHROMEDRIVER_PATH"), options=chrome_options)
+        driver = webdriver.Firefox(executable_path=os.getenv("GECKODRIVER_PATH"), options=firefox_options)
         driver.get(url)
         driver.save_screenshot(file_name)
         driver.quit()
@@ -162,12 +159,6 @@ async def on_message(message):
             sent_message = await message.channel.send(error_message)
             print(f"Failed to fetch token data: {e}")
             await sent_message.delete(delay=60)
-
-# 添加新的命令处理器
-@bot.command()
-async def 新功能(ctx, *, query: str):
-    # 这里添加处理新功能的代码
-    pass
 
 # 运行机器人
 bot.run(discordtoken)
