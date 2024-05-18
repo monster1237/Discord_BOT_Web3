@@ -19,9 +19,9 @@ intents.message_content = True
 bot = commands.Bot(command_prefix='', intents=intents)
 
 # 从环境变量中获取API密钥
-coinmarketcap_key = os.getenv('COINMARKETCAP_API')
-cryptocurrencyalerting_key = os.getenv('CRYPTOCURRENCYALERTING_API')
-discordtoken = os.getenv('DISCORD_BOT')
+coinmarketcap_key = os.environ['COINMARKETCAP_API']
+cryptocurrencyalerting_key = os.environ['CRYPTOCURRENCYALERTING_API']
+discordtoken = os.environ['DISCORD_BOT']
 
 # 定义Solana和Ethereum地址的正则表达式模式
 solana_address_pattern = r'[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{32,44}'
@@ -65,6 +65,8 @@ def take_screenshot(url, file_name):
         # 设置Firefox的无头模式选项
         firefox_options = FirefoxOptions()
         firefox_options.add_argument("--headless")  # 无界面模式
+        firefox_options.add_argument("--no-sandbox")
+        firefox_options.add_argument("--disable-dev-shm-usage")
 
         # 创建WebDriver实例
         driver = webdriver.Firefox(executable_path=os.getenv("GECKODRIVER_PATH"), options=firefox_options)
@@ -85,9 +87,6 @@ async def on_ready():
 # 监听消息事件
 @bot.event
 async def on_message(message):
-    # 确保处理命令
-    await bot.process_commands(message)
-
     if message.author == bot.user:
         return
 
