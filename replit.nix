@@ -12,5 +12,6 @@
     pkgs.lcms2
     pkgs.freetype
     pkgs.geckodriver
+    pkgs.google-chrome
   ];
 }
