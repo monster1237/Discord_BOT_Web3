@@ -13,7 +13,13 @@ from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from PIL import Image
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
 import traceback
+
+
+
+
 
 # 设置Discord机器人的意图
 intents = discord.Intents.default()
@@ -28,6 +34,8 @@ coinmarketcap_key = os.environ.get('COINMARKETCAP_API')
 cryptocurrencyalerting_key = os.environ.get('CRYPTOCURRENCYALERTING_API')
 discordtoken = os.environ.get('DISCORD_BOT')
 chromedriver_path = os.getenv('CHROMEDRIVER_PATH', '/usr/local/bin/chromedriver')
+service = Service(os.getenv('CHROMEDRIVER_PATH'))
+driver = webdriver.Chrome(service=service)
 
 # 定义Solana和Ethereum地址的正则表达式模式
 solana_address_pattern = r'[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{32,44}'
