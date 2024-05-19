@@ -28,13 +28,11 @@ RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add
     apt-get install -y google-chrome-stable
 
 # 获取最新的 ChromeDriver 版本号，并下载对应的 ChromeDriver
-RUN CHROME_VERSION=$(google-chrome --version | grep -oP '\\d+\\.\\d+\\.\\d+\\.\\d+' | cut -d '.' -f 1) && \
+RUN CHROME_VERSION=$(google-chrome --version | grep -oE '[0-9.]+' | head -1) && \
     CHROMEDRIVER_VERSION=$(curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION) && \
-    wget -O /tmp/chromedriver.zip https://storage.googleapis.com/chrome-for-testing-public/125.0.6422.60/linux64/chromedriver-linux64.zip && \
+    wget -O /tmp/chromedriver.zip https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip && \
     unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
     rm /tmp/chromedriver.zip
-
-
 
 # 复制项目文件
 COPY . .
@@ -45,8 +43,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 暴露端口（如果需要）
 EXPOSE 8000
 
+RUN chmod +x /usr/local/bin/chromedriver
+
+
 # 设置环境变量
 ENV CHROMEDRIVER_PATH=/usr/local/bin/chromedriver
+
 
 # 运行应用
 CMD ["python", "main.py"]
