@@ -3,3 +3,4 @@ selenium
 requests
 pillow
 solders
+pytz==2021.1
