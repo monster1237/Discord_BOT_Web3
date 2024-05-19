@@ -73,7 +73,7 @@ async def on_message(message):
     if match_solana:
         solana_address = match_solana.group()
         if validate_solana_address(solana_address):
-            sol_url = f"<https://dexscreener.com/Solana/{solana_address}>"
+            sol_url = f"<https://gmgn.ai/sol/token/{solana_address}?embled=1>"
             log_address(message.author.id, message.author.name, solana_address)
             await message.channel.send(sol_url)  # 发送网址
         return
@@ -82,7 +82,7 @@ async def on_message(message):
     match_eth = re.search(eth_address_pattern, message.content)
     if match_eth:
         eth_address = match_eth.group()
-        eth_url = f"<https://dexscreener.com/Ethereum/eth_address>"
+        eth_url = f"https://gmgn.ai/eth/token/{eth_address}?embled=1"
         log_address(message.author.id, message.author.name, eth_address)
         await message.channel.send(eth_url)  # 发送网址
         return
