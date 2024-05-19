@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import os
 import json
 import re
@@ -6,6 +5,8 @@ import sqlite3
 import requests
 import discord
 from discord.ext import commands
+from datetime import datetime
+import pytz
 from solders.pubkey import Pubkey
 
 # 设置Discord机器人的意图
@@ -56,10 +57,66 @@ def log_address(user_id, username, address):
     conn.commit()
     conn.close()
 
+# 获取涨跌幅信息和社交信息
+async def get_token_info(address):
+    url = f"https://api.dexscreener.com/latest/dex/tokens/{address}"
+    response = requests.get(url)
+    data = response.json()
+
+    # 获取第一个配对的数据
+    pair_data = data['pairs'][0] if data['pairs'] else {}
+
+    # 获取基本信息
+    token_name = pair_data.get('baseToken', {}).get('name', '无')
+    current_price = float(pair_data.get('priceUsd', '0'))  # 确保current_price是浮点数
+    total_supply = float(pair_data.get('liquidity', {}).get('base', '0'))
+    volume_24h = float(pair_data.get('volume', {}).get('h24', '0'))
+    liquidity = float(pair_data.get('liquidity', {}).get('usd', '0'))
+
+    # 初始化涨跌幅信息
+    price_change_info = {
+        'm5': pair_data.get('priceChange', {}).get('m5', '无'),
+        'h1': pair_data.get('priceChange', {}).get('h1', '无'),
+        'h6': pair_data.get('priceChange', {}).get('h6', '无'),
+        'h24': pair_data.get('priceChange', {}).get('h24', '无')
+    }
+
+    # 初始化社交信息
+    social_info = ""
+    for social in pair_data.get('info', {}).get('socials', []):
+        social_type = social.get('type', '').title()
+        social_url = social.get('url', '无')
+        social_info += f"{social_type}: {social_url}\n" if social_type and social_url else ""
+
+    # 计算代币创建时间与当前日期的差异（转换为+8时区）
+    tz_shanghai = pytz.timezone('Asia/Shanghai')
+    pair_created_at = datetime.fromtimestamp(pair_data.get('pairCreatedAt', 0) / 1000, tz_shanghai)
+    time_since_creation = datetime.now(tz_shanghai) - pair_created_at
+    days_since_creation = time_since_creation.days
+    hours_since_creation = time_since_creation.seconds // 3600
+    minutes_since_creation = (time_since_creation.seconds // 60) % 60
+
+    # 构建并返回消息内容
+    message_content = f"**名称**: {token_name}\n" \
+                      f"**现在价格**: ${current_price:,.8f}\n" \
+                      f"**5分钟涨跌幅**: {price_change_info['m5']}%\n" \
+                      f"**1小时涨跌幅**: {price_change_info['h1']}%\n" \
+                      f"**6小时涨跌幅**: {price_change_info['h6']}%\n" \
+                      f"**24小时涨跌幅**: {price_change_info['h24']}%\n" \
+                      f"**创建时间**: {pair_created_at.strftime('%Y-%m-%d %H:%M:%S')} (UTC+8)\n" \
+                      f"**距离时间**: {days_since_creation}天 {hours_since_creation}小时 {minutes_since_creation}分钟\n" \
+                      f"**24小时交易量**: {volume_24h:,.2f}\n" \
+                      f"**流动性**: ${liquidity:,.2f}\n" \
+                      f"**代币总数量**: {total_supply:,.0f}\n\n" \
+                      f"**社交**:\n{social_info}\n" \
+                      f"**网址**: <{pair_data.get('url', '无')}>"
+    token_image_url = pair_data.get('info', {}).get('imageUrl', '')
+    return message_content, token_image_url
+
 # 当机器人准备好时触发
 @bot.event
 async def on_ready():
-    print(f'We have logged in as {bot.user}')
+    print(f'Logged in as {bot.user}')
     init_db()
 
 # 监听消息事件
@@ -73,20 +130,25 @@ async def on_message(message):
     if match_solana:
         solana_address = match_solana.group()
         if validate_solana_address(solana_address):
-            sol_url = f"<https://gmgn.ai/sol/token/{solana_address}?embled=1>"
+            token_info_message, token_image_url = await get_token_info(solana_address)
             log_address(message.author.id, message.author.name, solana_address)
-            await message.channel.send(sol_url)  # 发送网址
-        return
+            await message.channel.send(token_info_message)
+            if token_image_url != '无':
+                await message.channel.send(token_image_url)  # 发送图片URL
+            return
 
     # 处理Ethereum地址
     match_eth = re.search(eth_address_pattern, message.content)
     if match_eth:
         eth_address = match_eth.group()
-        eth_url = f"https://gmgn.ai/eth/token/{eth_address}?embled=1"
+        token_info_message, token_image_url = await get_token_info(eth_address)
         log_address(message.author.id, message.author.name, eth_address)
-        await message.channel.send(eth_url)  # 发送网址
+        await message.channel.send(token_info_message)
+        if token_image_url != '无':
+            await message.channel.send(token_image_url)  # 发送图片URL
         return
 
+    # 处理查询命令
     if '查询' in message.content:
         symbol = message.content.split('查询')[-1].strip()
         try:
