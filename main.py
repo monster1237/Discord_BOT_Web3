@@ -5,17 +5,8 @@ import re
 import sqlite3
 import requests
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 from solders.pubkey import Pubkey
-from selenium import webdriver
-from selenium.webdriver.firefox.service import Service as FirefoxService
-from selenium.webdriver.firefox.options import Options as FirefoxOptions
-from PIL import Image
-import traceback
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
-from selenium.common.exceptions import TimeoutException
 
 # 设置Discord机器人的意图
 intents = discord.Intents.default()
@@ -28,14 +19,6 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 # 从环境变量中获取API密钥
 coinmarketcap_key = os.environ.get('COINMARKETCAP_API')
 discordtoken = os.environ.get('DISCORD_BOT')
-
-# 从环境变量中获取 geckodriver 路径
-geckodriver_path = os.getenv('GECKODRIVER_PATH', '/usr/local/bin/geckodriver')
-firefox_options = FirefoxOptions()
-firefox_options.add_argument("--no-sandbox")
-firefox_options.add_argument("--headless")
-firefox_options.add_argument("--disable-dev-shm-usage")
-firefox_options.add_argument("--disable-gpu")
 
 # 定义Solana和Ethereum地址的正则表达式模式
 solana_address_pattern = r'[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{32,44}'
@@ -73,33 +56,6 @@ def log_address(user_id, username, address):
     conn.commit()
     conn.close()
 
-# 截图功能
-def take_screenshot(url, file_name):
-    driver = None
-    try:
-        service = FirefoxService(executable_path=geckodriver_path)
-        driver = webdriver.Firefox(service=service, options=firefox_options)
-        driver.get(url)
-        
-        # 等待页面加载
-        wait = WebDriverWait(driver, 10)
-        wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-        
-        driver.save_screenshot(file_name)
-    except TimeoutException:
-        error_message = "Timeout while waiting for page to load"
-        if driver:
-            driver.quit()
-        return error_message
-    except Exception as e:
-        error_message = traceback.format_exc()
-        if driver:
-            driver.quit()
-        return error_message
-    if driver:
-        driver.quit()
-    return None
-
 # 当机器人准备好时触发
 @bot.event
 async def on_ready():
@@ -117,32 +73,18 @@ async def on_message(message):
     if match_solana:
         solana_address = match_solana.group()
         if validate_solana_address(solana_address):
-            sol_url = f"https://gmgn.ai/sol/token/{solana_address}?embled=1"
+            sol_url = f"<https://dexscreener.com/Solana/{solana_address}>"
             log_address(message.author.id, message.author.name, solana_address)
             await message.channel.send(sol_url)  # 发送网址
-            screenshot_file = f"{solana_address}.png"
-            error_message = take_screenshot(sol_url, screenshot_file)
-            if error_message:
-                sent_message = await message.channel.send(f"截图失败：\n```\n{error_message}\n```")
-                await sent_message.delete(delay=30)
-            else:
-                await message.channel.send(file=discord.File(screenshot_file))
         return
 
     # 处理Ethereum地址
     match_eth = re.search(eth_address_pattern, message.content)
     if match_eth:
         eth_address = match_eth.group()
-        eth_url = f"https://gmgn.ai/eth/token/{eth_address}?embled=1"
+        eth_url = f"<https://dexscreener.com/Ethereum/eth_address>"
         log_address(message.author.id, message.author.name, eth_address)
         await message.channel.send(eth_url)  # 发送网址
-        screenshot_file = f"{eth_address}.png"
-        error_message = take_screenshot(eth_url, screenshot_file)
-        if error_message:
-            sent_message = await message.channel.send(f"截图失败：\n```\n{error_message}\n```")
-            await sent_message.delete(delay=30)
-        else:
-            await message.channel.send(file=discord.File(screenshot_file))
         return
 
     if '查询' in message.content:
