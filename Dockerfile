@@ -18,21 +18,15 @@ RUN apt-get update && apt-get install -y \
     fonts-liberation \
     libasound2 \
     xdg-utils \
+    firefox-esr \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
-# 添加 Google Chrome 的源，并安装 Google Chrome
-RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - && \
-    sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google.list' && \
-    apt-get update && \
-    apt-get install -y google-chrome-stable
-
-# 获取最新的 ChromeDriver 版本号，并下载对应的 ChromeDriver
-RUN CHROME_VERSION=$(google-chrome --version | grep -oE '[0-9.]+' | head -1) && \
-    CHROMEDRIVER_VERSION=$(curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION) && \
-    wget -O /tmp/chromedriver.zip https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip && \
-    unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
-    rm /tmp/chromedriver.zip
+# 下载 geckodriver
+RUN GECKODRIVER_VERSION=$(curl -sS https://api.github.com/repos/mozilla/geckodriver/releases/latest | grep tag_name | cut -d '"' -f 4) && \
+    wget -O /tmp/geckodriver.tar.gz https://github.com/mozilla/geckodriver/releases/download/$GECKODRIVER_VERSION/geckodriver-$GECKODRIVER_VERSION-linux64.tar.gz && \
+    tar -xzf /tmp/geckodriver.tar.gz -C /usr/local/bin && \
+    rm /tmp/geckodriver.tar.gz
 
 # 复制项目文件
 COPY . .
@@ -43,12 +37,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 暴露端口（如果需要）
 EXPOSE 8000
 
-RUN chmod +x /usr/local/bin/chromedriver
-
+RUN chmod +x /usr/local/bin/geckodriver
 
 # 设置环境变量
-ENV CHROMEDRIVER_PATH=/usr/local/bin/chromedriver
-
+ENV GECKODRIVER_PATH=/usr/local/bin/geckodriver
 
 # 运行应用
 CMD ["python", "main.py"]
