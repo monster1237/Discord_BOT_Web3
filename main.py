@@ -12,6 +12,10 @@ from selenium.webdriver.firefox.service import Service as FirefoxService
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from PIL import Image
 import traceback
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException
 
 # 设置Discord机器人的意图
 intents = discord.Intents.default()
@@ -75,10 +79,20 @@ def take_screenshot(url, file_name):
         service = FirefoxService(executable_path=geckodriver_path)
         driver = webdriver.Firefox(service=service, options=firefox_options)
         driver.get(url)
+        
+        # 等待页面加载
+        wait = WebDriverWait(driver, 10)
+        wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+        
         driver.save_screenshot(file_name)
         driver.quit()
+    except TimeoutException:
+        error_message = "Timeout while waiting for page to load"
+        driver.quit()
+        return error_message
     except Exception as e:
         error_message = traceback.format_exc()
+        driver.quit()
         return error_message
     return None
 
