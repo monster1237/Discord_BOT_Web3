@@ -8,13 +8,9 @@ import discord
 from discord.ext import commands, tasks
 from solders.pubkey import Pubkey
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service as ChromeService
-from selenium.webdriver.chrome.options import Options as ChromeOptions
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.firefox.service import Service as FirefoxService
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from PIL import Image
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
 import traceback
 
 # 设置Discord机器人的意图
@@ -27,11 +23,15 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 # 从环境变量中获取API密钥
 coinmarketcap_key = os.environ.get('COINMARKETCAP_API')
-cryptocurrencyalerting_key = os.environ.get('CRYPTOCURRENCYALERTING_API')
 discordtoken = os.environ.get('DISCORD_BOT')
-chromedriver_path = os.getenv('CHROMEDRIVER_PATH', '/usr/local/bin/chromedriver')
-service = ChromeService(executable_path=chromedriver_path)
-driver = webdriver.Chrome(service=service, options=chrome_options)
+
+# 从环境变量中获取 geckodriver 路径
+geckodriver_path = os.getenv('GECKODRIVER_PATH', '/usr/local/bin/geckodriver')
+firefox_options = FirefoxOptions()
+firefox_options.add_argument("--no-sandbox")
+firefox_options.add_argument("--headless")
+firefox_options.add_argument("--disable-dev-shm-usage")
+firefox_options.add_argument("--disable-gpu")
 
 # 定义Solana和Ethereum地址的正则表达式模式
 solana_address_pattern = r'[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{32,44}'
@@ -72,29 +72,13 @@ def log_address(user_id, username, address):
 # 截图功能
 def take_screenshot(url, file_name):
     try:
-        # 设置Chrome的无头模式选项
-        chrome_options = ChromeOptions()
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--headless")
-        chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.add_argument("--disable-gpu")
-
-        print(f"Using ChromeDriver path: {chromedriver_path}")
-        print(f"URL to capture: {url}")
-
-        # 创建WebDriver实例
-        service = ChromeService(executable_path=chromedriver_path)
-        driver = webdriver.Chrome(service=service, options=chrome_options)
+        service = FirefoxService(executable_path=geckodriver_path)
+        driver = webdriver.Firefox(service=service, options=firefox_options)
         driver.get(url)
-
-        print(f"Page title: {driver.title}")
-        
         driver.save_screenshot(file_name)
         driver.quit()
-        print(f"Screenshot saved to {file_name}")
     except Exception as e:
         error_message = traceback.format_exc()
-        print(f"Error taking screenshot: {error_message}")
         return error_message
     return None
 
