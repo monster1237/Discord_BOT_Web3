@@ -75,6 +75,7 @@ def log_address(user_id, username, address):
 
 # 截图功能
 def take_screenshot(url, file_name):
+    driver = None
     try:
         service = FirefoxService(executable_path=geckodriver_path)
         driver = webdriver.Firefox(service=service, options=firefox_options)
@@ -85,15 +86,18 @@ def take_screenshot(url, file_name):
         wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
         
         driver.save_screenshot(file_name)
-        driver.quit()
     except TimeoutException:
         error_message = "Timeout while waiting for page to load"
-        driver.quit()
+        if driver:
+            driver.quit()
         return error_message
     except Exception as e:
         error_message = traceback.format_exc()
-        driver.quit()
+        if driver:
+            driver.quit()
         return error_message
+    if driver:
+        driver.quit()
     return None
 
 # 当机器人准备好时触发
