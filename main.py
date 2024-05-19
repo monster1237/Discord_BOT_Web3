@@ -5,6 +5,7 @@ import sqlite3
 import requests
 import discord
 from discord.ext import commands
+import discord as discord_module
 from datetime import datetime
 import pytz
 from solders.pubkey import Pubkey
@@ -25,6 +26,7 @@ discordtoken = os.environ.get('DISCORD_BOT')
 solana_address_pattern = r'[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{32,44}'
 eth_address_pattern = r'0x[a-fA-F0-9]{40}'
 
+
 # Solana地址验证函数
 def validate_solana_address(address):
     try:
@@ -32,6 +34,7 @@ def validate_solana_address(address):
         return pubkey.is_on_curve()
     except ValueError:
         return False
+
 
 # 初始化数据库
 def init_db():
@@ -49,13 +52,17 @@ def init_db():
     conn.commit()
     conn.close()
 
+
 # 记录地址到数据库
 def log_address(user_id, username, address):
     conn = sqlite3.connect('bot_data.db')
     c = conn.cursor()
-    c.execute('INSERT INTO addresses (user_id, username, address) VALUES (?, ?, ?)', (user_id, username, address))
+    c.execute(
+        'INSERT INTO addresses (user_id, username, address) VALUES (?, ?, ?)',
+        (user_id, username, address))
     conn.commit()
     conn.close()
+
 
 # 获取涨跌幅信息和社交信息
 async def get_token_info(address):
@@ -68,7 +75,8 @@ async def get_token_info(address):
 
     # 获取基本信息
     token_name = pair_data.get('baseToken', {}).get('name', '无')
-    current_price = float(pair_data.get('priceUsd', '0'))  # 确保current_price是浮点数
+    current_price = float(pair_data.get('priceUsd',
+                                        '0'))  # 确保current_price是浮点数
     total_supply = float(pair_data.get('liquidity', {}).get('base', '0'))
     volume_24h = float(pair_data.get('volume', {}).get('h24', '0'))
     liquidity = float(pair_data.get('liquidity', {}).get('usd', '0'))
@@ -86,11 +94,12 @@ async def get_token_info(address):
     for social in pair_data.get('info', {}).get('socials', []):
         social_type = social.get('type', '').title()
         social_url = social.get('url', '无')
-        social_info += f"{social_type}: {social_url}\n" if social_type and social_url else ""
+        social_info += f"{social_type}: <{social_url}>\n" if social_type and social_url else ""
 
     # 计算代币创建时间与当前日期的差异（转换为+8时区）
     tz_shanghai = pytz.timezone('Asia/Shanghai')
-    pair_created_at = datetime.fromtimestamp(pair_data.get('pairCreatedAt', 0) / 1000, tz_shanghai)
+    pair_created_at = datetime.fromtimestamp(
+        pair_data.get('pairCreatedAt', 0) / 1000, tz_shanghai)
     time_since_creation = datetime.now(tz_shanghai) - pair_created_at
     days_since_creation = time_since_creation.days
     hours_since_creation = time_since_creation.seconds // 3600
@@ -113,11 +122,13 @@ async def get_token_info(address):
     token_image_url = pair_data.get('info', {}).get('imageUrl', '')
     return message_content, token_image_url
 
+
 # 当机器人准备好时触发
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user}')
     init_db()
+
 
 # 监听消息事件
 @bot.event
@@ -130,11 +141,13 @@ async def on_message(message):
     if match_solana:
         solana_address = match_solana.group()
         if validate_solana_address(solana_address):
-            token_info_message, token_image_url = await get_token_info(solana_address)
+            token_info_message, token_image_url = await get_token_info(
+                solana_address)
             log_address(message.author.id, message.author.name, solana_address)
-            await message.channel.send(token_info_message)
+            embed = discord_module.Embed(description=token_info_message)
             if token_image_url != '无':
-                await message.channel.send(token_image_url)  # 发送图片URL
+                embed.set_image(url=token_image_url)
+            await message.channel.send(embed=embed)
             return
 
     # 处理Ethereum地址
@@ -143,11 +156,13 @@ async def on_message(message):
         eth_address = match_eth.group()
         token_info_message, token_image_url = await get_token_info(eth_address)
         log_address(message.author.id, message.author.name, eth_address)
-        await message.channel.send(token_info_message)
+        embed = discord_module.Embed(description=token_info_message)
         if token_image_url != '无':
-            await message.channel.send(token_image_url)  # 发送图片URL
+            embed.set_image(url=token_image_url)
+        await message.channel.send(embed=embed)
         return
 
+    # 处理查询命令
     # 处理查询命令
     if '查询' in message.content:
         symbol = message.content.split('查询')[-1].strip()
@@ -159,20 +174,25 @@ async def on_message(message):
 
             url_links = f"https://pro-api.coinmarketcap.com/v1/cryptocurrency/info?symbol={symbol.upper()}"
             response_links = requests.get(url_links, headers=headers)
-            data_links = json.loads(response_links.text)['data'][symbol.upper()]
+            data_links = json.loads(
+                response_links.text)['data'][symbol.upper()]
 
             name = data_info['name']
             symbol = data_info['symbol']
             price = data_info['quote']['USD']['price']
             percent_change_1h = data_info['quote']['USD']['percent_change_1h']
-            percent_change_24h = data_info['quote']['USD']['percent_change_24h']
+            percent_change_24h = data_info['quote']['USD'][
+                'percent_change_24h']
             percent_change_7d = data_info['quote']['USD']['percent_change_7d']
             market_cap_rank = data_info['cmc_rank']
             total_supply = data_info['total_supply']
             circulating_supply = data_info['circulating_supply']
-            website = data_links['urls']['website'][0] if data_links['urls']['website'] else '无'
-            twitter = data_links['urls']['twitter'][0] if data_links['urls']['twitter'] else '无'
-            discord = data_links['urls']['chat'][0] if data_links['urls']['chat'] else '无'
+            website = f"<{data_links['urls']['website'][0]}>" if data_links[
+                'urls']['website'] else '无'
+            twitter = f"<{data_links['urls']['twitter'][0]}>" if data_links[
+                'urls']['twitter'] else '无'
+            discord = f"<{data_links['urls']['chat'][0]}>" if data_links[
+                'urls']['chat'] else '无'
 
             response_message = f"**{name} ({symbol})**\n\n" \
                                f"价格: `${price:.8f}`\n" \
@@ -182,9 +202,9 @@ async def on_message(message):
                                f"市值排名: `{market_cap_rank}`\n" \
                                f"发行总量: `{total_supply}`\n" \
                                f"流通数量: `{circulating_supply}`\n" \
-                               f"项目方网站: <{website}>\n" \
-                               f"Twitter: <{twitter}>\n" \
-                               f"Discord: <{discord}>"
+                               f"项目方网站: {website}\n" \
+                               f"Twitter: {twitter}\n" \
+                               f"Discord: {discord}"
 
             await message.channel.send(response_message)
         except Exception as e:
@@ -192,6 +212,7 @@ async def on_message(message):
             sent_message = await message.channel.send(error_message)
             print(f"Failed to fetch token data: {e}")
             await sent_message.delete(delay=60)
+
 
 # 运行机器人
 bot.run(discordtoken)
