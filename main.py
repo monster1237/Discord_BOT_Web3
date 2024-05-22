@@ -107,6 +107,7 @@ async def get_token_info(address):
 
     # 构建并返回消息内容
     message_content = f"**名称**: {token_name}\n" \
+                      f"**地址**: {address}\n" \
                       f"**现在价格**: ${current_price:,.8f}\n" \
                       f"**5分钟涨跌幅**: {price_change_info['m5']}%\n" \
                       f"**1小时涨跌幅**: {price_change_info['h1']}%\n" \
@@ -163,56 +164,35 @@ async def on_message(message):
         return
 
     # 处理查询命令
-    # 处理查询命令
     if '查询' in message.content:
         symbol = message.content.split('查询')[-1].strip()
         try:
-            url_info = f"https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?symbol={symbol.upper()}"
-            headers = {'X-CMC_PRO_API_KEY': coinmarketcap_key}
-            response_info = requests.get(url_info, headers=headers)
-            data_info = json.loads(response_info.text)['data'][symbol.upper()]
+            # 使用DexScreener的API接口搜索配对
+            url_search = f"https://api.dexscreener.com/latest/dex/search/?q={symbol}"
+            response_search = requests.get(url_search)
+            search_results = json.loads(response_search.text)
 
-            url_links = f"https://pro-api.coinmarketcap.com/v1/cryptocurrency/info?symbol={symbol.upper()}"
-            response_links = requests.get(url_links, headers=headers)
-            data_links = json.loads(
-                response_links.text)['data'][symbol.upper()]
+            # 确保搜索结果不为空
+            if not search_results['pairs']:
+                raise ValueError("没有找到匹配的代币配对。")
 
-            name = data_info['name']
-            symbol = data_info['symbol']
-            price = data_info['quote']['USD']['price']
-            percent_change_1h = data_info['quote']['USD']['percent_change_1h']
-            percent_change_24h = data_info['quote']['USD'][
-                'percent_change_24h']
-            percent_change_7d = data_info['quote']['USD']['percent_change_7d']
-            market_cap_rank = data_info['cmc_rank']
-            total_supply = data_info['total_supply']
-            circulating_supply = data_info['circulating_supply']
-            website = f"<{data_links['urls']['website'][0]}>" if data_links[
-                'urls']['website'] else '无'
-            twitter = f"<{data_links['urls']['twitter'][0]}>" if data_links[
-                'urls']['twitter'] else '无'
-            discord = f"<{data_links['urls']['chat'][0]}>" if data_links[
-                'urls']['chat'] else '无'
+            # 获取第一个配对的代币地址
+            baseToken_address = search_results['pairs'][0]['baseToken']['address']
 
-            response_message = f"**{name} ({symbol})**\n\n" \
-                               f"价格: `${price:.8f}`\n" \
-                               f"1小时涨跌幅: `{percent_change_1h:.1f}%`\n" \
-                               f"24小时涨跌幅: `{percent_change_24h:.1f}%`\n" \
-                               f"7天涨跌幅: `{percent_change_7d:.1f}%`\n" \
-                               f"市值排名: `{market_cap_rank}`\n" \
-                               f"发行总量: `{total_supply}`\n" \
-                               f"流通数量: `{circulating_supply}`\n" \
-                               f"项目方网站: {website}\n" \
-                               f"Twitter: {twitter}\n" \
-                               f"Discord: {discord}"
+            # 调用get_token_info函数获取代币信息
+            token_info_message, token_image_url = await get_token_info(baseToken_address)
 
-            await message.channel.send(response_message)
+            # 创建embed消息
+            embed = discord.Embed(description=token_info_message)
+            if token_image_url != '无':
+                embed.set_image(url=token_image_url)
+            await message.channel.send(embed=embed)
+
         except Exception as e:
             error_message = f"输入的代币 `{symbol}` 不存在或数据获取失败。"
-            sent_message = await message.channel.send(error_message)
+            await message.channel.send(error_message)
             print(f"Failed to fetch token data: {e}")
-            await sent_message.delete(delay=60)
-
 
 # 运行机器人
 bot.run(discordtoken)
+
