@@ -211,10 +211,10 @@ async def on_message(message):
                         embed.add_field(name="市值排名",
                                         value=f"{market_cap_rank}" if market_cap_rank is not None else "无",
                                         inline=True)
-                        embed.add_field(name="发行总量", value=f"{total_supply}" if total_supply is not None else "无",
+                        embed.add_field(name="发行总量", value=f"{total_supply:,.0f}" if total_supply is not None else "无",
                                         inline=True)
                         embed.add_field(name="流通数量",
-                                        value=f"{circulating_supply}" if circulating_supply is not None else "无",
+                                        value=f"{circulating_supply:,.0f}" if circulating_supply is not None else "无",
                                         inline=True)
                         embed.add_field(name="项目方网站", value=website, inline=False)
                         embed.add_field(name="推特", value=twitter, inline=True)
