@@ -167,32 +167,98 @@ async def on_message(message):
     if '查询' in message.content:
         symbol = message.content.split('查询')[-1].strip()
         try:
-            # 使用DexScreener的API接口搜索配对
+            # 首先尝试使用CoinMarketCap的API查询代币信息
+            url_info = f"https://pro-api.coinmarketcap.com/v1/cryptocurrency/info?symbol={symbol.upper()}"
+            headers = {'X-CMC_PRO_API_KEY': coinmarketcap_key}
+            response_info = requests.get(url_info, headers=headers)
+            if response_info.status_code == 200:
+                data_info = response_info.json().get('data', {}).get(symbol.upper(), {})
+                if data_info:
+                    # 如果CoinMarketCap有结果，发送格式化的信息
+                    name = data_info.get('name', '无')
+                    symbol = data_info.get('symbol', '无')
+                    urls = data_info.get('urls', {})
+                    website = urls.get('website', [])[0] if urls.get('website') else '无'
+                    twitter = urls.get('twitter', [])[0] if urls.get('twitter') else '无'
+                    discord3 = urls.get('chat', [])[0] if urls.get('chat') and urls.get('chat') != [] else '无'
+                    logo_url = data_info.get('logo')
+
+                    # 现在获取财务信息
+                    url_quotes = f"https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?symbol={symbol.upper()}"
+                    response_quotes = requests.get(url_quotes, headers=headers)
+                    if response_quotes.status_code == 200:
+                        data_quotes = response_quotes.json().get('data', {}).get(symbol.upper(), {})
+                        price = data_quotes.get('quote', {}).get('USD', {}).get('price')
+                        percent_change_1h = data_quotes.get('quote', {}).get('USD', {}).get('percent_change_1h')
+                        percent_change_24h = data_quotes.get('quote', {}).get('USD', {}).get('percent_change_24h')
+                        percent_change_7d = data_quotes.get('quote', {}).get('USD', {}).get('percent_change_7d')
+                        market_cap_rank = data_quotes.get('cmc_rank')
+                        total_supply = data_quotes.get('total_supply')
+                        circulating_supply = data_quotes.get('circulating_supply')
+
+                        # 在尝试格式化之前检查价格是否为None
+                        formatted_price = f"${price:.8f}" if price is not None else "无"
+                        formatted_percent_change_1h = f"{percent_change_1h:.1f}%" if percent_change_1h is not None else "无"
+                        formatted_percent_change_24h = f"{percent_change_24h:.1f}%" if percent_change_24h is not None else "无"
+                        formatted_percent_change_7d = f"{percent_change_7d:.1f}%" if percent_change_7d is not None else "无"
+
+                        embed = discord.Embed(title=f"{name} ({symbol})", color=0x1ABC9C)  # 颜色可以自定义
+                        embed.set_thumbnail(url=logo_url)
+                        embed.add_field(name="价格", value=formatted_price, inline=False)
+                        embed.add_field(name="1小时涨跌幅", value=formatted_percent_change_1h, inline=True)
+                        embed.add_field(name="24小时涨跌幅", value=formatted_percent_change_24h, inline=True)
+                        embed.add_field(name="7天涨跌幅", value=formatted_percent_change_7d, inline=True)
+                        embed.add_field(name="市值排名",
+                                        value=f"{market_cap_rank}" if market_cap_rank is not None else "无",
+                                        inline=True)
+                        embed.add_field(name="发行总量", value=f"{total_supply}" if total_supply is not None else "无",
+                                        inline=True)
+                        embed.add_field(name="流通数量",
+                                        value=f"{circulating_supply}" if circulating_supply is not None else "无",
+                                        inline=True)
+                        embed.add_field(name="项目方网站", value=website, inline=False)
+                        embed.add_field(name="推特", value=twitter, inline=True)
+                        embed.add_field(name="Discord", value=discord3, inline=True)
+
+                        # 发送嵌入式消息
+                        await message.channel.send(embed=embed)
+                    else:
+                        # 如果没有找到财务信息，只发送社交链接
+                        embed = discord.Embed(title=f"{name} ({symbol})", color=0x1ABC9C)
+                        embed.add_field(name="项目方网站", value=website, inline=False)
+                        embed.add_field(name="推特", value=twitter, inline=True)
+                        embed.add_field(name="Discord", value=discord3, inline=True)
+                        await message.channel.send(embed=embed)
+                else:
+          # 如果CoinMarketCap API没有返回有效的代币信息，则使用DexScreener API
+                    raise ValueError("CoinMarketCap API没有返回有效的代币信息。")
+            else:
+                raise ValueError("CoinMarketCap API请求失败。")
+        except ValueError as ve:
+            # CoinMarketCap API请求失败或没有返回有效信息，使用DexScreener API
             url_search = f"https://api.dexscreener.com/latest/dex/search/?q={symbol}"
             response_search = requests.get(url_search)
             search_results = json.loads(response_search.text)
 
             # 确保搜索结果不为空
-            if not search_results['pairs']:
-                raise ValueError("没有找到匹配的代币配对。")
-
-            # 获取第一个配对的代币地址
-            baseToken_address = search_results['pairs'][0]['baseToken']['address']
-
-            # 调用get_token_info函数获取代币信息
-            token_info_message, token_image_url = await get_token_info(baseToken_address)
-
-            # 创建embed消息
-            embed = discord.Embed(description=token_info_message)
-            if token_image_url != '无':
-                embed.set_image(url=token_image_url)
-            await message.channel.send(embed=embed)
-
+            if search_results['pairs']:
+                baseToken_address = search_results['pairs'][0]['baseToken']['address']
+                # 调用get_token_info函数获取代币信息
+                token_info_message, token_image_url = await get_token_info(baseToken_address)
+                # 创建embed消息
+                embed = discord.Embed(description=token_info_message)
+                if token_image_url != '无':
+                    embed.set_image(url=token_image_url)
+                await message.channel.send(embed=embed)
+            else:
+                error_message = f"没有找到匹配的代币 `{symbol}`。"
+                await message.channel.send(error_message)
         except Exception as e:
+            # 处理其他异常
             error_message = f"输入的代币 `{symbol}` 不存在或数据获取失败。"
             await message.channel.send(error_message)
             print(f"Failed to fetch token data: {e}")
 
-# 运行机器人
+ # 运行机器人
 bot.run(discordtoken)
 
